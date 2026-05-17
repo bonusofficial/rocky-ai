@@ -32,7 +32,13 @@
     </nav>
 
     <div class="grid lg:grid-cols-[1fr,360px] gap-6">
-      <article class="border-2 border-border bg-card shadow-pixel">
+      <article class="border-2 border-border bg-card shadow-pixel flex flex-col">
+        {#if product.image}
+          <div class="w-full aspect-video md:aspect-[21/9] border-b-2 border-border bg-muted overflow-hidden relative">
+            <img src={product.image} alt={product.name} class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-gradient-to-t from-background/40 to-transparent pointer-events-none"></div>
+          </div>
+        {/if}
         <div class="p-5 md:p-6 border-b-2 border-border flex items-start justify-between gap-3 flex-wrap">
           <div class="min-w-0">
             <div class="font-mono text-[10px] text-muted-foreground">// {product.category.slug.toUpperCase()}</div>

@@ -121,6 +121,12 @@
         {#each visibleProducts as p (p.id)}
           {@const badge = statusBadge(p)}
           <article class="border-2 border-border bg-card shadow-pixel flex flex-col">
+            {#if p.image}
+              <div class="w-full aspect-video border-b-2 border-border bg-muted overflow-hidden relative">
+                <img src={p.image} alt={p.name} class="w-full h-full object-cover" />
+                <div class="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none"></div>
+              </div>
+            {/if}
             <div class="p-5 border-b-2 border-border flex items-start justify-between gap-3">
               <div class="min-w-0">
                 <div class="font-mono text-[10px] text-muted-foreground">// {p.category.slug.toUpperCase()}</div>

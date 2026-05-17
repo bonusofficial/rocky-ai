@@ -51,7 +51,8 @@ const app = new Elysia()
       return { error: "BAD_PATH" };
     }
     const full = resolve(UPLOADS_ROOT, rel);
-    if (!full.startsWith(UPLOADS_ROOT + "/") && full !== UPLOADS_ROOT) {
+    const { sep } = require("node:path");
+    if (!full.startsWith(UPLOADS_ROOT + sep) && full !== UPLOADS_ROOT) {
       set.status = 400;
       return { error: "BAD_PATH" };
     }

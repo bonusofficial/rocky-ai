@@ -12,6 +12,46 @@
   let showForm = $state(false);
   let editingId = $state<string | null>(null);
 
+  let createImageUrl = $state<string | null>(null);
+  let createImageName = $state<string>('');
+  let createImageInput = $state<HTMLInputElement | null>(null);
+
+  let editImageUrl = $state<string | null>(null);
+  let editImageName = $state<string>('');
+  let editImageInput = $state<HTMLInputElement | null>(null);
+  let editClearImage = $state<boolean>(false);
+
+  function pickImage(e: Event, setUrl: (v: string | null) => void, setName: (v: string) => void) {
+    const file = (e.target as HTMLInputElement).files?.[0] ?? null;
+    if (!file) {
+      setUrl(null);
+      setName('');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('FILE_TOO_LARGE — max 5 MB');
+      (e.target as HTMLInputElement).value = '';
+      return;
+    }
+    setUrl(URL.createObjectURL(file));
+    setName(file.name);
+  }
+
+  function clearCreateImage() {
+    if (createImageInput) createImageInput.value = '';
+    if (createImageUrl) URL.revokeObjectURL(createImageUrl);
+    createImageUrl = null;
+    createImageName = '';
+  }
+
+  function clearEditImage() {
+    if (editImageInput) editImageInput.value = '';
+    if (editImageUrl) URL.revokeObjectURL(editImageUrl);
+    editImageUrl = null;
+    editImageName = '';
+    editClearImage = true;
+  }
+
   const categoryOptions = $derived([
     { id: 'ALL', label: 'ALL' },
     ...categories.map((c) => ({ id: c.id, label: c.name.toUpperCase() }))
@@ -79,8 +119,12 @@
     <form
       method="POST"
       action="?/create"
+      enctype="multipart/form-data"
       use:enhance={() => async ({ result, update }) => {
-        if (result.type === 'success') showForm = false;
+        if (result.type === 'success') {
+          showForm = false;
+          clearCreateImage();
+        }
         await update();
       }}
       class="border-2 border-primary bg-card p-5 md:p-6 shadow-pixel space-y-4"
@@ -123,6 +167,44 @@
           <label for="p-desc" class="font-pixel text-[9px] text-muted-foreground">DESCRIPTION</label>
           <textarea id="p-desc" name="description" rows="3" placeholder="รายละเอียดสินค้า..." class="w-full p-3 border-2 border-border bg-background font-mono text-sm rounded-none focus:border-primary focus:outline-none resize-none"></textarea>
         </div>
+        <div class="space-y-1.5 md:col-span-2">
+          <span class="font-pixel text-[9px] text-muted-foreground">PRODUCT_IMAGE</span>
+          <div class="flex items-center gap-3">
+            <div class="w-20 h-20 grid place-items-center bg-muted border-2 border-border overflow-hidden flex-shrink-0">
+              {#if createImageUrl}
+                <img src={createImageUrl} alt="preview" class="w-full h-full object-cover" />
+              {:else}
+                <span class="font-pixel text-[9px] text-muted-foreground">NONE</span>
+              {/if}
+            </div>
+            <div class="flex-1 min-w-0 space-y-1.5">
+              <label class="inline-flex items-center gap-2 cursor-pointer h-9 px-3 font-pixel text-[9px] border-2 border-border bg-muted hover:bg-primary hover:text-primary-foreground w-fit">
+                <span>SELECT_FILE ▶</span>
+                <input
+                  bind:this={createImageInput}
+                  type="file"
+                  name="imageFile"
+                  accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                  onchange={(e) =>
+                    pickImage(
+                      e,
+                      (v) => (createImageUrl = v),
+                      (v) => (createImageName = v)
+                    )}
+                  class="hidden"
+                />
+              </label>
+              {#if createImageName}
+                <div class="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+                  <span class="truncate">{createImageName}</span>
+                  <button type="button" onclick={clearCreateImage} class="font-pixel text-[9px] text-destructive hover:underline">[REMOVE]</button>
+                </div>
+              {:else}
+                <div class="font-mono text-[10px] text-muted-foreground">PNG / JPG / WEBP / GIF · max 5 MB</div>
+              {/if}
+            </div>
+          </div>
+        </div>
       </div>
       <button type="submit" class="h-10 px-5 font-pixel text-[10px] bg-primary text-primary-foreground hover:bg-primary-glow shadow-pixel">CREATE ▶</button>
     </form>
@@ -160,22 +242,48 @@
               <form
                 method="POST"
                 action="?/update"
+                enctype="multipart/form-data"
                 use:enhance={() => async ({ result, update }) => {
-                  if (result.type === 'success') editingId = null;
+                  if (result.type === 'success') {
+                    editingId = null;
+                    clearEditImage();
+                  }
                   await update();
                 }}
                 class="grid md:grid-cols-[1fr,140px,90px,110px,auto] gap-2 items-center"
               >
                 <input type="hidden" name="id" value={p.id} />
+                <input type="hidden" name="clearImage" value={String(editClearImage)} />
                 <div class="grid gap-1">
                   <input type="text" name="sku" value={p.sku} required class="h-9 px-2 border-2 border-border bg-background font-mono text-sm uppercase" />
                   <input type="text" name="name" value={p.name} required class="h-9 px-2 border-2 border-border bg-background font-mono text-sm" />
                 </div>
-                <select name="categoryId" class="h-9 px-2 border-2 border-border bg-background font-mono text-sm">
-                  {#each categories as c (c.id)}
-                    <option value={c.id} selected={c.id === p.category.id}>{c.slug}</option>
-                  {/each}
-                </select>
+                <div class="grid gap-1">
+                  <select name="categoryId" class="h-9 px-2 border-2 border-border bg-background font-mono text-sm">
+                    {#each categories as c (c.id)}
+                      <option value={c.id} selected={c.id === p.category.id}>{c.slug}</option>
+                    {/each}
+                  </select>
+                  <div class="flex items-center gap-1">
+                    <label class="h-9 px-2 font-pixel text-[8px] flex items-center justify-center border-2 border-border bg-muted cursor-pointer hover:bg-primary hover:text-primary-foreground flex-1">
+                      IMG ▶
+                      <input
+                        bind:this={editImageInput}
+                        type="file"
+                        name="imageFile"
+                        accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                        onchange={(e) => {
+                          pickImage(e, (v) => (editImageUrl = v), (v) => (editImageName = v));
+                          editClearImage = false;
+                        }}
+                        class="hidden"
+                      />
+                    </label>
+                    {#if (p.image && !editClearImage) || editImageUrl}
+                       <button type="button" onclick={clearEditImage} class="h-9 px-2 font-pixel text-[8px] border-2 border-destructive text-destructive hover:bg-destructive hover:text-background flex-none">×</button>
+                    {/if}
+                  </div>
+                </div>
                 <input type="number" name="price" value={p.price} min="0" class="h-9 px-2 border-2 border-border bg-background font-mono text-sm" />
                 <select name="status" class="h-9 px-2 border-2 border-border bg-background font-mono text-sm">
                   <option value="ACTIVE" selected={p.status === 'ACTIVE'}>ACTIVE</option>
@@ -184,7 +292,7 @@
                 </select>
                 <div class="flex gap-1">
                   <button type="submit" class="h-9 px-3 font-pixel text-[9px] bg-primary text-primary-foreground hover:bg-primary-glow shadow-pixel">SAVE</button>
-                  <button type="button" onclick={() => (editingId = null)} class="h-9 px-3 font-pixel text-[9px] border-2 border-border bg-muted hover:bg-card">×</button>
+                  <button type="button" onclick={() => { editingId = null; clearEditImage(); }} class="h-9 px-3 font-pixel text-[9px] border-2 border-border bg-muted hover:bg-card">×</button>
                 </div>
               </form>
             {:else}
@@ -209,9 +317,18 @@
               </div>
 
               <div class="hidden md:grid grid-cols-[1fr,140px,90px,90px,110px,160px] gap-3 items-center">
-                <div class="truncate">
-                  <span class="font-pixel text-[10px]">{p.sku}</span>
-                  <span class="block font-mono text-[10px] text-muted-foreground mt-0.5 truncate">{p.name}</span>
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-10 h-10 grid place-items-center bg-muted border-2 border-border flex-shrink-0">
+                    {#if p.image}
+                      <img src={p.image} alt={p.name} class="w-full h-full object-cover" />
+                    {:else}
+                      <span class="font-pixel text-[8px] text-muted-foreground">NONE</span>
+                    {/if}
+                  </div>
+                  <div class="truncate">
+                    <span class="font-pixel text-[10px]">{p.sku}</span>
+                    <span class="block font-mono text-[10px] text-muted-foreground mt-0.5 truncate">{p.name}</span>
+                  </div>
                 </div>
                 <span class="font-mono text-[10px] text-muted-foreground">{p.category.slug}</span>
                 <span class="font-pixel text-[10px]">฿{p.price}</span>
