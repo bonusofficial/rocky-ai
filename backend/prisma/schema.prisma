@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Rank {
+  Member
+  Admin
+}
+
+enum ProductStatus {
+  ACTIVE
+  DRAFT
+  SOLD_OUT
+}
+
+model User {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  email       String   @unique
+  password    String
+  credit      Int      @default(0)
+  totalCredit Int      @default(0) @map("total_credit")
+  rank        Rank     @default(Member)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt      @map("updated_at")
+
+  @@map("users")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  icon        String    @default("▶")
+  description String    @default("")
+  position    Int       @default(0)
+  visible     Boolean   @default(true)
+  products    Product[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt      @map("updated_at")
+
+  @@index([position])
+  @@map("categories")
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  sku         String        @unique
+  name        String
+  description String        @default("")
+  price       Int           @default(0)
+  duration    String        @default("—")
+  image       String?
+  status      ProductStatus @default(ACTIVE)
+  categoryId  String        @map("category_id")
+  category    Category      @relation(fields: [categoryId], references: [id])
+  stock       StockItem[]
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt      @map("updated_at")
+
+  @@index([categoryId])
+  @@map("products")
+}
+
+model StockItem {
+  id        String    @id @default(cuid())
+  productId String    @map("product_id")
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  content   String
+  soldAt    DateTime? @map("sold_at")
+  soldToId  String?   @map("sold_to_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@unique([productId, content])
+  @@index([productId, soldAt])
+  @@map("stock_items")
+}
